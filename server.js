@@ -2,11 +2,13 @@ const express = require('express');
 const cors = require('cors');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
-const pool = require('./db');
+const pool = require('./db'); // db.js configurado para PostgreSQL
+
+require('dotenv').config();
 
 const app = express();
 app.use(cors());
-app.use(express.json());
+app.use(express.json()); // IMPORTANTE para recibir JSON
 
 // Ruta de prueba
 app.get('/', (req, res) => {
@@ -16,6 +18,10 @@ app.get('/', (req, res) => {
 // Registro de usuario
 app.post('/register', async (req, res) => {
   const { nombre, correo, contrasena } = req.body;
+
+  if (!nombre || !correo || !contrasena) {
+    return res.status(400).json({ error: 'Faltan campos requeridos' });
+  }
 
   try {
     // Verificar si el correo ya existe
@@ -37,16 +43,21 @@ app.post('/register', async (req, res) => {
       [nombre, correo, hashedPassword]
     );
 
-    res.json({ mensaje: 'Usuario registrado correctamente' });
+    return res.status(201).json({ mensaje: 'Usuario registrado correctamente' });
+
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Error en la base de datos' });
+    console.error('Error en registro:', err);
+    return res.status(500).json({ error: 'Error en la base de datos' });
   }
 });
 
 // Login
 app.post('/login', async (req, res) => {
   const { correo, contrasena } = req.body;
+
+  if (!correo || !contrasena) {
+    return res.status(400).json({ error: 'Faltan campos requeridos' });
+  }
 
   try {
     const user = await pool.query(
@@ -70,10 +81,11 @@ app.post('/login', async (req, res) => {
       { expiresIn: '1h' }
     );
 
-    res.json({ mensaje: 'Login correcto', token });
+    return res.json({ mensaje: 'Login correcto', token });
+
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Error en la base de datos' });
+    console.error('Error en login:', err);
+    return res.status(500).json({ error: 'Error en la base de datos' });
   }
 });
 
