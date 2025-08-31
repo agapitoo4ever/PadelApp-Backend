@@ -98,8 +98,61 @@ app.post('/login', async (req, res) => {
   }
 });
 
+// -------------------- CAMBIAR CONTRASEÑA --------------------
+app.post('/cambiar-contrasena', authenticateToken, async (req, res) => {
+  const { contrasenaActual, nuevaContrasena } = req.body;
+
+  if (!contrasenaActual || !nuevaContrasena) {
+    return res.status(400).json({ error: 'Faltan campos requeridos' });
+  }
+
+  try {
+    // Buscar usuario por ID del token
+    const user = await pool.query('SELECT * FROM usuarios WHERE id = $1', [req.user.id]);
+
+    if (user.rows.length === 0) {
+      return res.status(404).json({ error: 'Usuario no encontrado' });
+    }
+
+    // Verificar contraseña actual
+    const validPass = await bcrypt.compare(contrasenaActual, user.rows[0].contrasena);
+    if (!validPass) {
+      return res.status(400).json({ error: 'La contraseña actual no es correcta' });
+    }
+
+    // Hashear la nueva
+    const hashedPassword = await bcrypt.hash(nuevaContrasena, 10);
+
+    // Actualizar en DB
+    await pool.query('UPDATE usuarios SET contrasena = $1 WHERE id = $2', [
+      hashedPassword,
+      req.user.id,
+    ]);
+
+    return res.json({ mensaje: 'Contraseña actualizada correctamente' });
+
+  } catch (err) {
+    console.error('Error en cambio de contraseña:', err);
+    return res.status(500).json({ error: 'Error en la base de datos' });
+  }
+});
+
+
 // -------------------- SERVIDOR --------------------
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`Servidor escuchando en puerto ${PORT}`);
 });
+
+function authenticateToken(req, res, next) {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1]; // "Bearer <token>"
+
+  if (!token) return res.status(401).json({ error: 'Token requerido' });
+
+  jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
+    if (err) return res.status(403).json({ error: 'Token inválido o expirado' });
+    req.user = user; // { id, nombre }
+    next();
+  });
+}
