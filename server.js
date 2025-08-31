@@ -8,14 +8,14 @@ require('dotenv').config();
 
 const app = express();
 app.use(cors());
-app.use(express.json()); // IMPORTANTE para recibir JSON
+app.use(express.json()); // Necesario para recibir JSON
 
 // Ruta de prueba
 app.get('/', (req, res) => {
   res.send('Backend de Padel funcionando ✅');
 });
 
-// Registro de usuario
+// -------------------- REGISTRO --------------------
 app.post('/register', async (req, res) => {
   const { nombre, correo, contrasena } = req.body;
 
@@ -51,7 +51,7 @@ app.post('/register', async (req, res) => {
   }
 });
 
-// Login
+// -------------------- LOGIN --------------------
 app.post('/login', async (req, res) => {
   const { correo, contrasena } = req.body;
 
@@ -81,7 +81,16 @@ app.post('/login', async (req, res) => {
       { expiresIn: '1h' }
     );
 
-    return res.json({ mensaje: 'Login correcto', token });
+    // Devolver nombre y token
+    return res.json({
+      mensaje: 'Login correcto',
+      token,
+      usuario: {
+        id: user.rows[0].id,
+        nombre: user.rows[0].nombre,
+        correo: user.rows[0].correo,
+      },
+    });
 
   } catch (err) {
     console.error('Error en login:', err);
@@ -89,7 +98,7 @@ app.post('/login', async (req, res) => {
   }
 });
 
-// Iniciar servidor
+// -------------------- SERVIDOR --------------------
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`Servidor escuchando en puerto ${PORT}`);
